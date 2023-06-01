@@ -9,8 +9,16 @@ import datetime
 class AdsenseCSVHelper(csvHelper.CSVHelper):
     def getDateRangeReport(self, dataframe: pandas.DataFrame, keyFieldName:str, valueFilterBegin:str, valueFilterEnd:str, minmaxDateInputFormat:str, minmaxDateOutputFormat:str ):
         output = {}
+        if len(dataframe.index) == 0:
+            if self.debugMode:
+                print(f"[WARNING] dataframe is empty.")
+            return output
 
         pickedData = dataframe[ (dataframe[keyFieldName] >= valueFilterBegin) & (dataframe[keyFieldName] <= valueFilterEnd) ]
+        if len(pickedData.index) == 0:
+            if self.debugMode:
+                print(f"[WARNING] dataframe is empty, too")
+            return output
 
         maxRow = pickedData[ pickedData['Estimated earnings (USD)'] == pickedData['Estimated earnings (USD)'].max() ]
         minRow = pickedData[ pickedData['Estimated earnings (USD)'] == pickedData['Estimated earnings (USD)'].min() ]
@@ -91,24 +99,29 @@ class AdsenseCSVHelper(csvHelper.CSVHelper):
     
             compareInfo = {}
             for lookup in csvCommonInfo.CSV_OUTPUT_REPORT_COMPARISON_INFO:
+                if lookup not in item or lookup not in prevItemInfo:
+                    compareInfo[lookup] = 0
+                    continue
                 compareInfo[lookup] = (item[lookup] - prevItemInfo[lookup]) * 100 / prevItemInfo[lookup]
 
             output["output"]["csv"]["data"].append([
                 f"{target}",
-                item['Estimated earnings (USD)'],
+                item['Estimated earnings (USD)'] if 'Estimated earnings (USD)' in item else 0.0,
                 compareInfo['Estimated earnings (USD)'],
-                item['Average earnings (USD)'],
+                item['Average earnings (USD)'] if 'Average earnings (USD)' in item else 0.0,
                 compareInfo['Average earnings (USD)'],
-                item['Average CPC'],
+                item['Average CPC'] if 'Average CPC' in item else 0.0,
                 compareInfo['Average CPC'],
-                item['Lowest earnings'],
-                item['Lowest earnings info'],
-                item['Highest earnings'],
-                item['Highest earnings info'],
+                item['Lowest earnings'] if 'Lowest earnings' in item else 0.0,
+                item['Lowest earnings info'] if 'Lowest earnings info' in item else None,
+                item['Highest earnings'] if 'Highest earnings' in item else 0.0,
+                item['Highest earnings info'] if 'Highest earnings info' in item else None,
             ])
 
-            output["output"]["csv"]["total"]["Cumulative Revenue"] += item['Estimated earnings (USD)']
-            output["output"]["csv"]["total"]["Average Daily Revenue"] += item['Average earnings (USD)']
+            if 'Estimated earnings (USD)' in item:
+                output["output"]["csv"]["total"]["Cumulative Revenue"] += item['Estimated earnings (USD)']
+            if 'Average earnings (USD)' in item:
+                output["output"]["csv"]["total"]["Average Daily Revenue"] += item['Average earnings (USD)']
 
         return output
 

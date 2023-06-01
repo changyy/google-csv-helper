@@ -18,7 +18,7 @@ setup(
     name="google-csv-helper", 
     version=VERSION,
     author="Yuan-Yi Chang",
-    author_email="<changyy.csie@email.com>",
+    author_email="<changyy.csie@gmail.com>",
     description=DESCRIPTION,
     long_description=LONG_DESCRIPTION,
     packages=find_packages(),

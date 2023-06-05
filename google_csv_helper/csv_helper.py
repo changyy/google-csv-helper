@@ -1,10 +1,11 @@
 # -*- encoding: utf-8 -*-
 
-import csv_common as csvCommonInfo
+from google_csv_helper import csv_common
 
 import os
 import io
 import json
+import csv
 import pandas
 import datetime
 
@@ -51,7 +52,8 @@ class CSVHelper:
         output = {}
         for key, values in self.raw_csv_files_output.items():
             for item in values:
-                #print(item)
+                if self.debugMode:
+                    print(f"readAllCSVRawFile: {item}")
                 df = None
                 for try_encodeing in ['utf-8', 'utf-16le']:
                     try:
@@ -60,6 +62,8 @@ class CSVHelper:
                             break
                     except Exception as e:
                         pass
+                if self.debugMode:
+                    print(df)
                 self.handlePandasDataFrame(key, item, df)
         return output
 
@@ -96,13 +100,13 @@ class CSVHelper:
                             #print(row)
                             #print(csvheader)
                             for index, header in enumerate(csvheader):
-                                if header in csvCommonInfo.CSV_OUTPUT_FIELD_NAME_DATA_TYPE:
-                                    if isinstance(csvCommonInfo.CSV_OUTPUT_FIELD_NAME_DATA_TYPE[header], int):
+                                if header in csv_common.CSV_OUTPUT_FIELD_NAME_DATA_TYPE:
+                                    if isinstance(csv_common.CSV_OUTPUT_FIELD_NAME_DATA_TYPE[header], int):
                                         try:
                                             row[index] = int(row[index])
                                         except Exception as e:
                                             row[index] = 0
-                                    elif isinstance(csvCommonInfo.CSV_OUTPUT_FIELD_NAME_DATA_TYPE[header], float):
+                                    elif isinstance(csv_common.CSV_OUTPUT_FIELD_NAME_DATA_TYPE[header], float):
                                         try:
                                             row[index] = float(row[index])
                                         except Exception as e:
@@ -116,13 +120,14 @@ class CSVHelper:
     def handlePandasDataFrame(self, key:str, filename:str , dataFrame: pandas.DataFrame):
         if isinstance(dataFrame, pandas.DataFrame) == False:
             return
-        #print(f"{key}: {filename}")
+        if self.debugMode:
+            print(f"handlePandasDataFrame: {key}: {filename}")
 
         fieldRename = {}
         # field name transform
         for field in dataFrame.columns:
-            if field in csvCommonInfo.CSV_FIELD_NAME_TRANSFORM:
-                fieldRename[field] = csvCommonInfo.CSV_FIELD_NAME_TRANSFORM[field]
+            if field in csv_common.CSV_FIELD_NAME_TRANSFORM:
+                fieldRename[field] = csv_common.CSV_FIELD_NAME_TRANSFORM[field]
         if len(fieldRename) > 0:
             dataFrame.rename(columns=fieldRename, inplace = True)
 
@@ -132,17 +137,17 @@ class CSVHelper:
         #keyField = dataFrame.columns[0]
         keyField = None
         for field in dataFrame.columns:
-            if field in csvCommonInfo.CSV_INPUT_CHECK_MAIN_FIELD:
+            if field in csv_common.CSV_INPUT_CHECK_MAIN_FIELD:
                 keyField = field
                 break
 
         # Skip
         if keyField == None:
             if self.debugMode:
-                 print(f"[WARNING] keyField({csvCommonInfo.CSV_INPUT_CHECK_MAIN_FIELD}) not found, skip this data: {filename}")
+                print(f"[WARNING] keyField({csv_common.CSV_INPUT_CHECK_MAIN_FIELD}) not found, skip this data: {filename}, fields: {dataFrame.columns}")
             return
 
-        for field, info in csvCommonInfo.CSV_FIELD_VALUE_TRANSFORM.items():
+        for field, info in csv_common.CSV_FIELD_VALUE_TRANSFORM.items():
             if field in dataFrame.columns and info['newFieldName'] not in dataFrame.columns:
                 #print(dataFrame.columns)
                 if self.debugMode:
@@ -153,15 +158,15 @@ class CSVHelper:
                     dataFrame[info['newFieldName']] = dataFrame.apply(info['handler'], axis=1)
                 #print(dataFrame[[field, info['newFieldName']]])
 
-        for field in csvCommonInfo.CSV_OUTPUT_ADSENSE_FIELDS:
+        for field in csv_common.CSV_OUTPUT_ADSENSE_FIELDS:
             if field not in dataFrame.columns:
                 if self.debugMode:
-                    print(f"[WARNING] dataField({csvCommonInfo.CSV_OUTPUT_ADSENSE_FIELDS}) not found, skip this data: {filename}")
+                    print(f"[WARNING] dataField({csv_common.CSV_OUTPUT_ADSENSE_FIELDS}) not found, skip this data: {filename}, field: {dataFrame.columns}")
                 return
             
         if self.debugMode:
             print(f"[INFO] import file: {filename}")
-        currentData = dataFrame[ [keyField] + csvCommonInfo.CSV_OUTPUT_ADSENSE_FIELDS ]
+        currentData = dataFrame[ [keyField] + csv_common.CSV_OUTPUT_ADSENSE_FIELDS ]
         currentDataLength = len(currentData)
         currentDateBegin = currentData[keyField][0] if currentDataLength > 0 else None
         currentDateEnd = currentData[keyField][currentDataLength - 1] if currentDataLength > 0 else None
@@ -178,7 +183,7 @@ class CSVHelper:
         oldDateEnd = keyFieldOldData[oldDataLength-1] if oldDataLength > 0 else None
 
         if oldDateBegin >= currentDateBegin or oldDateEnd <= currentDateEnd:
-            self.pandas_dataframe_output[key][keyField] = self.handleDataFrameMerge(self.pandas_dataframe_output[key][keyField], currentData, keyField, csvCommonInfo.CSV_OUTPUT_ADSENSE_FIELDS[0])
+            self.pandas_dataframe_output[key][keyField] = self.handleDataFrameMerge(self.pandas_dataframe_output[key][keyField], currentData, keyField, csv_common.CSV_OUTPUT_ADSENSE_FIELDS[0])
         return
 
     def handleDataFrameMerge(self, oldDataFrame: pandas.DataFrame, newDataFrame: pandas.DataFrame, keyField:str, valueField:str) -> pandas.DataFrame:

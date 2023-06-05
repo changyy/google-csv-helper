@@ -1,12 +1,12 @@
 # -*- encoding: utf-8 -*-
 
-import csv_common as csvCommonInfo
-import csv_helper as csvHelper
+from google_csv_helper import csv_common
+from google_csv_helper import csv_helper
 
 import pandas
 import datetime
 
-class AdsenseCSVHelper(csvHelper.CSVHelper):
+class AdsenseCSVHelper(csv_helper.CSVHelper):
     def getDateRangeReport(self, dataframe: pandas.DataFrame, keyFieldName:str, valueFilterBegin:str, valueFilterEnd:str, minmaxDateInputFormat:str, minmaxDateOutputFormat:str ):
         output = {}
         if len(dataframe.index) == 0:
@@ -87,6 +87,7 @@ class AdsenseCSVHelper(csvHelper.CSVHelper):
         output["output"]["date"]["previous"]["begin"] = prevDateFilterBegin
         output["output"]["date"]["previous"]["end"] = prevDateFilterEnd
 
+
         for k, v in self.getAllResult().items():
             target = k
             if k.find("adsense") > 0:
@@ -98,7 +99,7 @@ class AdsenseCSVHelper(csvHelper.CSVHelper):
             item = self.getDateRangeReport(v["Date"], 'Date', DateFilterBegin, DateFilterEnd, '%Y-%m-%d', '%m/%d %a')
     
             compareInfo = {}
-            for lookup in csvCommonInfo.CSV_OUTPUT_REPORT_COMPARISON_INFO:
+            for lookup in csv_common.CSV_OUTPUT_REPORT_COMPARISON_INFO:
                 if lookup not in item or lookup not in prevItemInfo:
                     compareInfo[lookup] = 0
                     continue
@@ -142,10 +143,3 @@ class AdsenseCSVHelper(csvHelper.CSVHelper):
 
         return "\n".join(output)
 
-if __name__ == '__main__':
-    import sys
-    obj = AdsenseCSVHelper(sys.argv[1:] if len(sys.argv) >= 2 else '')
-    #obj.enableDebug()
-    obj.readAllCSVRawFile()
-    #print(obj.getAllJSONResult())
-    print(obj.getDailyMarkDownReport(datetime.date.today(), ["adsense", "admob"]))

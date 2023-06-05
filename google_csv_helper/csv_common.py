@@ -48,7 +48,12 @@ CSV_FIELD_VALUE_TRANSFORM = {
         "handlerType": "calc",
         "handler": lambda row: (row['Estimated earnings (USD)'] / row["Clicks"]) if row["Clicks"] != 0 else 0,
         "newFieldName": "CPC (USD)",
-    }
+    },
+    "Impressions": {
+        "handlerType": "calc",
+        "handler": lambda row: (row['Clicks'] / row["Impressions"]) if row["Impressions"] != 0 else 0,
+        "newFieldName": "CTR",
+    },
 }
 
 CSV_FIELD_NAME_DATA_TYPE = {
@@ -78,7 +83,7 @@ CSV_OUTPUT_REPORT_COMPARISON_INFO = [
 	'Estimated earnings (USD)', 'Average earnings (USD)' , 'Average CPC',
 ]
 
-CSV_OUTPUT_FIELD_NAME_DATA_TYP = {
+CSV_OUTPUT_FIELD_NAME_DATA_TYPE = {
     #"Date": str,
     #"Month": str,
     #"Week": str,

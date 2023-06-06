@@ -40,6 +40,9 @@ class CSVHelper:
         else:
             for (dirpath, dirnames, filenames) in os.walk(input_path):
                 for f in filenames:
+                    exname = os.path.splitext(f)[1].lower()
+                    if exname != '.csv' and exname != '.tsv' :
+                        continue
                     if dirpath not in output:
                         output[dirpath] = []
                     full_path = os.path.join(dirpath,f)
@@ -55,16 +58,43 @@ class CSVHelper:
                 if self.debugMode:
                     print(f"readAllCSVRawFile: {item}")
                 df = None
-                for try_encodeing in ['utf-8', 'utf-16le']:
+                for try_encoding in [None, 'utf-8', 'utf-16le',]:
                     try:
-                        df = pandas.read_csv(item, sep='[,\\t]', engine='python', encoding=try_encodeing)
-                        if len(df.index) > 1:
+                        #df = pandas.read_csv(item, sep='[,\\t]', comment='#', engine='python', encoding=try_encoding)
+                        #df = pandas.read_csv(item, comment='#', encoding=try_encoding)
+                        exname = os.path.splitext(item)[1].lower()
+                        if exname == '.csv':
+                            if try_encoding == None:
+                                df = pandas.read_csv(item, sep=",", comment='#', engine='python')
+                            else:
+                                df = pandas.read_csv(item, sep=",", comment='#', engine='python', encoding=try_encoding)
+                        elif exname == '.tsv': 
+                            #df = pandas.read_csv(item, sep="\\t", comment='#', engine='python', encoding=try_encoding)
+                            if try_encoding == None:
+                                df = pandas.read_table(item, comment='#', engine='python')
+                            else:
+                                df = pandas.read_table(item, comment='#', engine='python', encoding=try_encoding)
+                        if df.empty != True and len(df.index) > 1:
+                            if self.debugMode:
+                                print(f"Use Encoding: '{try_encoding}' and '{exname}' mode")
                             break
                     except Exception as e:
                         pass
-                if self.debugMode:
-                    print(df)
-                self.handlePandasDataFrame(key, item, df)
+                if df.empty != True:
+                    try:
+                        df = df.dropna(subset=[df.columns[0]]).reset_index(drop=True)
+                    except Exception as e:
+                        if self.debugMode:
+                            print(f"remove NaN row failed: {e}")
+                        pass
+                    if self.debugMode:
+                        print(df)
+                        print(f"add into self.handlePandasDataFrame: {item}")
+                    self.handlePandasDataFrame(key, item, df)
+                else:
+                    if self.debugMode:
+                        print("Empty DataFrame: {item}")
+
         return output
 
     def getAllJSONResult(self) -> dict[str, pandas.DataFrame]:
@@ -130,6 +160,8 @@ class CSVHelper:
                 fieldRename[field] = csv_common.CSV_FIELD_NAME_TRANSFORM[field]
         if len(fieldRename) > 0:
             dataFrame.rename(columns=fieldRename, inplace = True)
+            if self.debugMode:
+                print(f"fieldRename: {fieldRename}, result: {dataFrame.columns}")
 
         if key not in self.pandas_dataframe_output:
             self.pandas_dataframe_output[key] = {}
@@ -158,15 +190,34 @@ class CSVHelper:
                     dataFrame[info['newFieldName']] = dataFrame.apply(info['handler'], axis=1)
                 #print(dataFrame[[field, info['newFieldName']]])
 
+        isAdsenseData = True
         for field in csv_common.CSV_OUTPUT_ADSENSE_FIELDS:
             if field not in dataFrame.columns:
+                isAdsenseData = False
                 if self.debugMode:
-                    print(f"[WARNING] dataField({csv_common.CSV_OUTPUT_ADSENSE_FIELDS}) not found, skip this data: {filename}, field: {dataFrame.columns}")
-                return
+                    print(f"[INFO] dataField({csv_common.CSV_OUTPUT_ADSENSE_FIELDS}) not found, skip this data: {filename}, field: {dataFrame.columns}")
+                break
+
+        isGAData = True
+        for field in csv_common.CSV_OUTPUT_GA_FIELDS:
+            if field not in dataFrame.columns:
+                isGAData = False
+                if self.debugMode:
+                    print(f"[INFO] dataField({csv_common.CSV_OUTPUT_GA_FIELDS}) not found, skip this data: {filename}, field: {dataFrame.columns}")
+                break
+
+        if isGAData == False and isAdsenseData == False:
+            print(f"[WARNING] skip the data: {dataFrame.columns}")
+            return
             
         if self.debugMode:
             print(f"[INFO] import file: {filename}")
-        currentData = dataFrame[ [keyField] + csv_common.CSV_OUTPUT_ADSENSE_FIELDS ]
+
+        currentData = None
+        if isAdsenseData:
+            currentData = dataFrame[ [keyField] + csv_common.CSV_OUTPUT_ADSENSE_FIELDS ]
+        if isGAData:
+            currentData = dataFrame[ [keyField] + csv_common.CSV_OUTPUT_GA_FIELDS ]
         currentDataLength = len(currentData)
         currentDateBegin = currentData[keyField][0] if currentDataLength > 0 else None
         currentDateEnd = currentData[keyField][currentDataLength - 1] if currentDataLength > 0 else None

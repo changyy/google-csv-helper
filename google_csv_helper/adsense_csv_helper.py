@@ -90,10 +90,24 @@ class AdsenseCSVHelper(csv_helper.CSVHelper):
 
         for k, v in self.getAllResult().items():
             target = k
-            if k.find("adsense") > 0:
-                target = "Adsense China" if k.find("cn") > 0 or k.find("china") > 0 else "Adsense Global"
-            elif k.find("admob") > 0:
-                target = "Admob China" if k.find("cn") > 0 or k.find("china") > 0 else "Admob Global"
+            #if k.find("adsense") > 0:
+            #    target = "Adsense China" if k.find("cn") > 0 or k.find("china") > 0 else "Adsense Global"
+            #elif k.find("admob") > 0:
+            #    target = "Admob China" if k.find("cn") > 0 or k.find("china") > 0 else "Admob Global"
+
+            # Check Format
+            if "Date" not in v:
+                if self.debugMode:
+                    print(f"Skip by checking 'Date': {target}")
+                continue
+            if "Date" not in v["Date"].columns:
+                if self.debugMode:
+                    print(f"Skip by checking columns['Date']['Date']: {target}")
+                continue
+            if 'Estimated earnings (USD)' not in v["Date"].columns:
+                if self.debugMode:
+                    print(f"Skip by checking columns['Date']['Estimated earnings (USD)']: {target}")
+                continue
     
             prevItemInfo = self.getDateRangeReport(v["Date"], 'Date', prevDateFilterBegin, prevDateFilterEnd, '%Y-%m-%d', '%m/%d %a')
             item = self.getDateRangeReport(v["Date"], 'Date', DateFilterBegin, DateFilterEnd, '%Y-%m-%d', '%m/%d %a')
@@ -131,7 +145,7 @@ class AdsenseCSVHelper(csv_helper.CSVHelper):
 
         output = [ 
             f"### Date Range: {data['output']['date']['duration']['begin']} ~ {data['output']['date']['duration']['end']}",
-            f"#### compare: {data['output']['date']['previous']['begin']} ~ {data['output']['date']['previous']['end']}",
+            f"#### Compare to previous period: {data['output']['date']['previous']['begin']} ~ {data['output']['date']['previous']['end']}",
             f"| Item | Cumulative Revenue | Average Daily Revenue | Average CPC | Min Daily Revenue | Max Daily Revenue ",
             f"| -- | --: | --: | --: | --: | --: ",
         ]

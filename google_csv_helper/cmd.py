@@ -3,7 +3,8 @@ import sys
 import argparse
 import datetime
 
-from google_csv_helper import * 
+from google_csv_helper import __version__
+from google_csv_helper import adsense_csv_helper
 
 def main():
     def valid_date(data: str):
@@ -34,7 +35,7 @@ def main():
         csv_filename_pattern.append( str(p).strip() )
 
     if args.version:
-        print(version)
+        print(__version__)
         sys.exit(0)
 
     if len(args.csv_dir) == 0:

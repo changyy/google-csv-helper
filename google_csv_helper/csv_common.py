@@ -36,6 +36,10 @@ CSV_FIELD_NAME_TRANSFORM = {
     "觀察到的有效千次曝光出價 (USD)": "Impression RPM (USD)",
     "點擊次數": "Clicks",
     "點閱率 (%) (%)" : "CTR%",
+
+    # GA3 zh-TW
+    "日索引": "Date",
+    "使用者": "User",
 }
 
 CSV_FIELD_VALUE_TRANSFORM = {
@@ -73,6 +77,10 @@ CSV_FIELD_NAME_DATA_TYPE = {
 
 CSV_OUTPUT_ADSENSE_FIELDS = [
     'Estimated earnings (USD)', 'Impressions', 'Impression RPM (USD)', 'Clicks', 'CTR', 'CPC (USD)',
+]
+
+CSV_OUTPUT_GA_FIELDS = [
+    'User',
 ]
 
 CSV_INPUT_CHECK_MAIN_FIELD = [

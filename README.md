@@ -1,7 +1,5 @@
 # google-csv-helper
 
-[![Upload Python Package](https://github.com/changyy/google-csv-helper/actions/workflows/python-publish.yml/badge.svg)](https://github.com/changyy/google-csv-helper/actions/workflows/python-publish.yml)
-
 A simple tool for parsing google csv files.
 
 # Installation

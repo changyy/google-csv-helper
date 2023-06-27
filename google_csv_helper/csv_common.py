@@ -40,6 +40,25 @@ CSV_FIELD_NAME_TRANSFORM = {
     # GA3 zh-TW
     "日索引": "Date",
     "使用者": "User",
+    "新使用者": "NewUser",
+
+    # Firebase zh-CN
+    "第 N 天" : "",
+    "30 天" : "",
+    "7 天"  : "",
+    "1 天" : "",
+}
+
+CSV_FIREBASE_KEYWORD = {
+    "活跃用户随时间的变化趋势如何？" : "DAU",
+    "开始日期" : "Begin",
+    "结束日期" : "End",
+}
+
+CSV_KEYWORD_USAGE = {
+    "活跃用户随时间的变化趋势如何？" : "",
+    "开始日期" : "",
+    "结束日期" : "",
 }
 
 CSV_FIELD_VALUE_TRANSFORM = {
@@ -80,7 +99,7 @@ CSV_OUTPUT_ADSENSE_FIELDS = [
 ]
 
 CSV_OUTPUT_GA_FIELDS = [
-    'User',
+    'User', 'NewUser', 'PageView',
 ]
 
 CSV_INPUT_CHECK_MAIN_FIELD = [

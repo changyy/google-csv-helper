@@ -12,17 +12,19 @@ import datetime
 class CSVHelper:
     raw_csv_files_output = {}
     pandas_dataframe_output = {}
+    input_field_checking = csv_common.CSV_INPUT_CHECK_MAIN_FIELD
+    input_field_transform = csv_common.CSV_FIELD_NAME_TRANSFORM
     debugMode = False
-    def __init__(self, input_path: str|list[str]):
+    def __init__(self, input_path: str|list[str], filename_pattern: list[str]):
         self.input_path = []
         if isinstance(input_path, str):
             #self.input_path.append(input_path)
-            self.findAllCSV(input_path)
+            self.findAllCSV(input_path, filename_pattern)
         elif isinstance(input_path, list):
             for item in input_path:
                 if isinstance(item, str):
                     #self.input_path.append(item)
-                    self.findAllCSV(item)
+                    self.findAllCSV(item, filename_pattern)
         self.src_file = []
         self.src_dir = []
 
@@ -32,7 +34,7 @@ class CSVHelper:
     def disableDebug(self):
         self.debugMode = False
 
-    def findAllCSV(self, input_path:str):
+    def findAllCSV(self, input_path:str, filename_pattern:list[str]):
         output = {}
         lookup = {}
         if os.path.isfile(input_path):
@@ -46,6 +48,14 @@ class CSVHelper:
                     if dirpath not in output:
                         output[dirpath] = []
                     full_path = os.path.join(dirpath,f)
+                    if len(filename_pattern) != 0:
+                        pick = False
+                        for pattern in filename_pattern:
+                            if pattern in full_path:
+                                pick = True
+                                break
+                        if pick == False:
+                            continue
                     if full_path not in lookup:
                         output[dirpath].append(full_path)
                         lookup[full_path] = dirpath
@@ -80,7 +90,7 @@ class CSVHelper:
                             break
                     except Exception as e:
                         pass
-                if df.empty != True:
+                if df is not None and df.empty != True:
                     try:
                         df = df.dropna(subset=[df.columns[0]]).reset_index(drop=True)
                     except Exception as e:
@@ -156,8 +166,8 @@ class CSVHelper:
         fieldRename = {}
         # field name transform
         for field in dataFrame.columns:
-            if field in csv_common.CSV_FIELD_NAME_TRANSFORM:
-                fieldRename[field] = csv_common.CSV_FIELD_NAME_TRANSFORM[field]
+            if field in self.input_field_transform:
+                fieldRename[field] = self.input_field_transform[field]
         if len(fieldRename) > 0:
             dataFrame.rename(columns=fieldRename, inplace = True)
             if self.debugMode:
@@ -169,14 +179,14 @@ class CSVHelper:
         #keyField = dataFrame.columns[0]
         keyField = None
         for field in dataFrame.columns:
-            if field in csv_common.CSV_INPUT_CHECK_MAIN_FIELD:
+            if field in self.input_field_checking:
                 keyField = field
                 break
 
         # Skip
         if keyField == None:
             if self.debugMode:
-                print(f"[WARNING] keyField({csv_common.CSV_INPUT_CHECK_MAIN_FIELD}) not found, skip this data: {filename}, fields: {dataFrame.columns}")
+                print(f"[WARNING] keyField({self.input_field_checking}) not found, skip this data: {filename}, fields: {dataFrame.columns}")
             return
 
         for field, info in csv_common.CSV_FIELD_VALUE_TRANSFORM.items():
@@ -198,13 +208,12 @@ class CSVHelper:
                     print(f"[INFO] dataField({csv_common.CSV_OUTPUT_ADSENSE_FIELDS}) not found, skip this data: {filename}, field: {dataFrame.columns}")
                 break
 
-        isGAData = True
+        isGAData = False
+        inputGADataFields = []
         for field in csv_common.CSV_OUTPUT_GA_FIELDS:
-            if field not in dataFrame.columns:
-                isGAData = False
-                if self.debugMode:
-                    print(f"[INFO] dataField({csv_common.CSV_OUTPUT_GA_FIELDS}) not found, skip this data: {filename}, field: {dataFrame.columns}")
-                break
+            if field in dataFrame.columns:
+                inputGADataFields.append(field)
+                isGAData = True
 
         if isGAData == False and isAdsenseData == False:
             print(f"[WARNING] skip the data: {dataFrame.columns}")
@@ -217,7 +226,7 @@ class CSVHelper:
         if isAdsenseData:
             currentData = dataFrame[ [keyField] + csv_common.CSV_OUTPUT_ADSENSE_FIELDS ]
         if isGAData:
-            currentData = dataFrame[ [keyField] + csv_common.CSV_OUTPUT_GA_FIELDS ]
+            currentData = dataFrame[ [keyField] + inputGADataFields ]
         currentDataLength = len(currentData)
         currentDateBegin = currentData[keyField][0] if currentDataLength > 0 else None
         currentDateEnd = currentData[keyField][currentDataLength - 1] if currentDataLength > 0 else None

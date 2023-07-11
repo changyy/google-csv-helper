@@ -13,7 +13,8 @@ def main():
         output = datetime.date.today()
         if data != "today":
             try:
-                return datetime.datetime.strptime(data, "%Y-%m-%d")
+                dt = datetime.datetime.strptime(data, "%Y-%m-%d")
+                return datetime.date(dt.year, dt.month, dt.day)
             except ValueError:
                 raise argparse.ArgumentTypeError(f"not a valid date: {data}")
         return output

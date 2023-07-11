@@ -251,6 +251,9 @@ class CSVHelper:
         # https://pandas.pydata.org/docs/reference/api/pandas.concat.html?highlight=concat#pandas.concat
         # https://pandas.pydata.org/docs/reference/api/pandas.merge_ordered.html
         output = pandas.merge_ordered(oldDataFrame, newDataFrame)
+        #print("##########")
+        #print(output)
+        #print("##------##")
         while True:
             oldSize = len(output.index)
             #print(f"Init size: {oldSize},  {output.index}")

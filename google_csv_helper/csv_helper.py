@@ -14,6 +14,8 @@ class CSVHelper:
     pandas_dataframe_output = {}
     input_field_checking = csv_common.CSV_INPUT_CHECK_MAIN_FIELD
     input_field_transform = csv_common.CSV_FIELD_NAME_TRANSFORM
+    default_import_csv_drop_duplicates_rules = { 'default': 'last' }
+    import_csv_drop_duplicates_rules = dict(default_import_csv_drop_duplicates_rules)
     debugMode = False
     def __init__(self, input_path: str|list[str], filename_pattern: list[str]):
         self.input_path = []
@@ -60,11 +62,36 @@ class CSVHelper:
                         output[dirpath].append(full_path)
                         lookup[full_path] = dirpath
         self.raw_csv_files_output = output
+        self.sortCSVFilesByModificationTime()
+
+    def sortCSVFilesByModificationTime(self):
+        for key, files in self.raw_csv_files_output.items():
+            if not files:
+                continue
+            tmpList = [(os.stat(filePath).st_mtime, filePath ) for filePath in files ]
+            tmpList.sort(key=lambda x: x[0])
+            self.raw_csv_files_output[key] = [ item[1] for item in tmpList ]
+
+    def setImportCSVDuplicateRules(self, csvFilename, rule):
+        self.import_csv_drop_duplicates_rules[csvFilename] = rule
+    
+    def clearImportCSVDuplicateRules(self):
+        self.import_csv_drop_duplicates_rules = dict(self.default_import_csv_drop_duplicates_rules)
+
+    def getImportCSVDuplicateRule(self, filename):
+        if filename in self.import_csv_drop_duplicates_rules:
+            return self.import_csv_drop_duplicates_rules[filename]
+        if 'default' in self.import_csv_drop_duplicates_rules:
+            return self.import_csv_drop_duplicates_rules['default']
+        return None
 
     def readAllCSVRawFile(self):
         output = {}
         for key, values in self.raw_csv_files_output.items():
             for item in values:
+                #if item.find('csv/adsense/hk') == -1:
+                #    continue
+                #print(f"readAllCSVRawFile: {item} PASS")
                 if self.debugMode:
                     print(f"readAllCSVRawFile: {item}")
                 df = None
@@ -97,10 +124,12 @@ class CSVHelper:
                         if self.debugMode:
                             print(f"remove NaN row failed: {e}")
                         pass
+
                     if self.debugMode:
                         print(df)
                         print(f"add into self.handlePandasDataFrame: {item}")
-                    self.handlePandasDataFrame(key, item, df)
+                        print(f"getImportCSVDuplicateRule - {item}, rule: {self.getImportCSVDuplicateRule(item)}")
+                    self.handlePandasDataFrame(key, item, df, self.getImportCSVDuplicateRule(item))
                 else:
                     if self.debugMode:
                         print("Empty DataFrame: {item}")
@@ -157,7 +186,7 @@ class CSVHelper:
             return output
         return None
 
-    def handlePandasDataFrame(self, key:str, filename:str , dataFrame: pandas.DataFrame):
+    def handlePandasDataFrame(self, key:str, filename:str , dataFrame: pandas.DataFrame, keepRule: None):
         if isinstance(dataFrame, pandas.DataFrame) == False:
             return
         if self.debugMode:
@@ -242,8 +271,22 @@ class CSVHelper:
         oldDateBegin = keyFieldOldData[0] if oldDataLength > 0 else None
         oldDateEnd = keyFieldOldData[oldDataLength-1] if oldDataLength > 0 else None
 
-        if oldDateBegin >= currentDateBegin or oldDateEnd <= currentDateEnd:
-            self.pandas_dataframe_output[key][keyField] = self.handleDataFrameMerge(self.pandas_dataframe_output[key][keyField], currentData, keyField, csv_common.CSV_OUTPUT_ADSENSE_FIELDS[0])
+        if oldDateEnd < currentDateBegin or oldDateBegin > currentDateEnd:
+            self.pandas_dataframe_output[key][keyField] = pandas.merge_ordered(self.pandas_dataframe_output[key][keyField], currentData)
+            return
+
+        self.pandas_dataframe_output[key][keyField] = pandas.merge_ordered(self.pandas_dataframe_output[key][keyField], currentData)
+        if keepRule != None:
+            # https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.drop_duplicates.html
+            self.pandas_dataframe_output[key][keyField].drop_duplicates(subset=keyField, keep=keepRule)
+
+        #if oldDateEnd == currentDateBegin or oldDateBegin == currentDateEnd:
+        #    self.pandas_dataframe_output[key][keyField] = self.handleDataFrameMerge(self.pandas_dataframe_output[key][keyField], currentData, keyField, csv_common.CSV_OUTPUT_ADSENSE_FIELDS[0])
+        #    return
+        #self.pandas_dataframe_output[key][keyField] = self.handleDataFrameMerge(self.pandas_dataframe_output[key][keyField], currentData, keyField, csv_common.CSV_OUTPUT_ADSENSE_FIELDS[0])
+
+        #if oldDateBegin >= currentDateBegin or oldDateEnd <= currentDateEnd:
+        #    self.pandas_dataframe_output[key][keyField] = self.handleDataFrameMerge(self.pandas_dataframe_output[key][keyField], currentData, keyField, csv_common.CSV_OUTPUT_ADSENSE_FIELDS[0])
         return
 
     def handleDataFrameMerge(self, oldDataFrame: pandas.DataFrame, newDataFrame: pandas.DataFrame, keyField:str, valueField:str) -> pandas.DataFrame:

@@ -17,7 +17,9 @@ class AdsenseCSVHelper(csv_helper.CSVHelper):
         pickedData = dataframe[ (dataframe[keyFieldName] >= valueFilterBegin) & (dataframe[keyFieldName] <= valueFilterEnd) ]
         if len(pickedData.index) == 0:
             if self.debugMode:
-                print(f"[WARNING] dataframe is empty, too")
+                print(f"[WARNING] dataframe is empty, too. valueFilterBegin: {valueFilterBegin}, valueFilterEnd: {valueFilterEnd}")
+                print(f"dataframe with (dataframe[keyFieldName] >= valueFilterBegin): { dataframe[ (dataframe[keyFieldName] >= valueFilterBegin) ] }")
+                print(f"dataframe with (dataframe[keyFieldName] <= valueFilterEnd): { dataframe[ (dataframe[keyFieldName] <= valueFilterEnd) ] }")
             return output
 
         maxRow = pickedData[ pickedData['Estimated earnings (USD)'] == pickedData['Estimated earnings (USD)'].max() ]
@@ -108,7 +110,7 @@ class AdsenseCSVHelper(csv_helper.CSVHelper):
                 if self.debugMode:
                     print(f"Skip by checking columns['Date']['Estimated earnings (USD)']: {target}")
                 continue
-    
+
             prevItemInfo = self.getDateRangeReport(v["Date"], 'Date', prevDateFilterBegin, prevDateFilterEnd, '%Y-%m-%d', '%m/%d %a')
             item = self.getDateRangeReport(v["Date"], 'Date', DateFilterBegin, DateFilterEnd, '%Y-%m-%d', '%m/%d %a')
     

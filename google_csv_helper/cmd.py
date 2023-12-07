@@ -60,6 +60,8 @@ def main():
 
     if args.debug:
         obj.enableDebug()
+
+    #obj.setImportCSVDuplicateRules('default', 'last')
     obj.readAllCSVRawFile()
 
     if args.output == 'markdown':

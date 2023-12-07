@@ -20,7 +20,7 @@ def main():
         return output
     parser = argparse.ArgumentParser()
     parser.add_argument("csv_dir", nargs="*", type=str, help="the directory where the csv file is located")
-    parser.add_argument("--output", choices=['json', 'markdown'], default='json', help="results format")
+    parser.add_argument("--output", choices=['json', 'markdown'], default='markdown', help="results format")
     parser.add_argument("--output-type", choices=['adsense', 'ga3', 'ga4'], default="adsense", help="the report")
     parser.add_argument("--report", choices=['date', 'week', 'month'], default='date', help="the report type")
     parser.add_argument("--debug", action="store_true", default=False, help="output the debug messages")

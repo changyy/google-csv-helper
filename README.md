@@ -1,4 +1,7 @@
+
 # google-csv-helper
+
+[![PyPI](https://img.shields.io/pypi/v/google-csv-helper.svg)](https://pypi.org/project/google-csv-helper/)
 
 A simple tool for parsing google csv files.
 

@@ -1,6 +1,18 @@
 # -*- encoding: utf-8 -*-
 
 CSV_FIELD_NAME_TRANSFORM = {
+    # Adsense API Export CSV
+    "DATE": "Date",
+    "ESTIMATED_EARNINGS": "Estimated earnings (USD)",
+    "PAGE_VIEWS": "Page views",
+    "PAGE_VIEWS_RPM": "Page RPM (USD)",
+    "IMPRESSIONS": "Impressions",
+    "IMPRESSIONS_RPM" : "Impression RPM (USD)",
+    "ACTIVE_VIEW_VIEWABILITY": "Active View Viewable",
+    "CLICKS" : "Clicks",
+    "IMPRESSIONS_CTR" : "CTR",
+    "COST_PER_CLICK": "CPC (USD)",
+
     # Adsense zh-TW
     "日期" : "Date",
     "月份" : "Month",

@@ -1,12 +1,15 @@
 # -*- encoding: utf-8 -*-
+import os
 import sys
 import argparse
 import datetime
+import json
 
 from google_csv_helper import __version__
 from google_csv_helper import adsense_csv_helper
 from google_csv_helper import ga3_csv_helper
 from google_csv_helper import ga4_csv_helper
+from google_csv_helper.google_common import *
 
 def main():
     def valid_date(data: str):
@@ -29,10 +32,65 @@ def main():
     parser.add_argument("--adsense-filename-keyword", type=str, default="adsense", help="the keyword on csv filename of adsense")
     parser.add_argument("--admob-filename-keyword", type=str, default="admob", help="the keyword on csv filename of admob")
     parser.add_argument("--ga-filename-keyword", type=str, default="ga", help="the keyword on csv filename of gogle anayltics")
+    parser.add_argument("--google-project-setup-config", type=str, default=".google_client_secret.apps.googleusercontent.com.json", help="google project info")
+    parser.add_argument("--google-adsense-token-file", type=str, default=".google_adsense_account_token", help="setup the token file for google adsense login")
+    parser.add_argument("--google-adsense-show-report-list", action="store_true", default=False, help="Show Google Adsense/Admob Saved Report")
+    parser.add_argument("--google-adsense-get-latest-csv", type=str, default=None, help="Specific Saved Report Name to export csv file")
 
     csv_filename_pattern = []
     args = parser.parse_args()
 
+    if args.google_adsense_show_report_list:
+        checkOauth, credentials, messages = googleProjectSetupCheck(args.google_project_setup_config, args.google_adsense_token_file)
+        if checkOauth == False:
+            print(f'[ERROR] googleProjectSetupCheck: {messages}')
+            sys.exit(1)
+        queryStatus, queryResult, queryMessage = getGoogleAdsenseSavedReportList(getGoogleAdsenseService(credentials))
+        if queryStatus == False:
+            print(f'[ERROR] getGoogleAdsenseSavedReportList: {queryMessage}')
+            sys.exit(1)
+        print(json.dumps(queryResult, indent = 4))
+        sys.exit(0)
+
+    if args.google_adsense_get_latest_csv:
+        checkOauth, credentials, messages = googleProjectSetupCheck(args.google_project_setup_config, args.google_adsense_token_file)
+        if checkOauth == False:
+            print(f'[ERROR] googleProjectSetupCheck: {messages}')
+            sys.exit(1)
+        queryStatus, queryResult, queryMessage = getGoogleAdsenseSavedReportList(getGoogleAdsenseService(credentials))
+        if queryStatus == False:
+            print(f'[ERROR] getGoogleAdsenseSavedReportList: {queryMessage}')
+            sys.exit(1)
+        savedReportList = queryResult
+        
+        foundSaveReportItem = None
+        for item in savedReportList:
+            if foundSaveReportItem:
+                break
+            if item['name'] == args.google_adsense_get_latest_csv:
+                foundSaveReportItem = item
+            elif item['title'].find(args.google_adsense_get_latest_csv) != -1:
+                foundSaveReportItem = item
+ 
+        if foundSaveReportItem == None:
+            print(f'[ERROR] getGoogleAdsenseSavedReportList not found: {args.google_adsense_get_latest_csv}')
+            sys.exit(1)
+
+        queryStatus, queryResult, queryMessage = getGoogleAdsenseReport(getGoogleAdsenseService(credentials), query = {
+            'reportId': foundSaveReportItem['name'],
+            'dateRange': 'MONTH_TO_DATE',
+            'currencyCode' : 'USD', 
+            'reportingTimeZone': 'ACCOUNT_TIME_ZONE',
+        })
+        if not queryStatus:
+            print(f'[ERROR] getGoogleAdsenseReport: {queryMessage}')
+            sys.exit(1)
+        queryStatus, queryResult, queryMessage = listToCSVFormat(queryResult)
+        if not queryStatus:
+            print(f'[ERROR] listToCSVFormat: {queryMessage}')
+            sys.exit(1)
+        print(queryResult)
+        sys.exit(0)
 
     if args.version:
         print(__version__)

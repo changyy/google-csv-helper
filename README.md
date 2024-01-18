@@ -1,4 +1,3 @@
-
 # google-csv-helper
 
 [![PyPI](https://img.shields.io/pypi/v/google-csv-helper.svg)](https://pypi.org/project/google-csv-helper/)
@@ -11,36 +10,21 @@ A simple tool for parsing google csv files.
 % pip install google-csv-helper
 ```
 
-# Usage
+# Usage 
 
 ```
 % tree csv 
 csv
 ├── admob
 │   └── hk
-│       ├── End-2023-05-31-day-admob-report.csv
-│       ├── End-2023-05-31-month-admob-report.csv
-│       ├── End-2023-05-31-week-admob-report.csv
-│       ├── latest-day.csv
-│       ├── latest-month.csv
-│       └── latest-week.csv
+│       └── latest-day.csv
 └── adsense
     ├── cn
-    │   ├── End-2023-05-31-day-AdSenseReport.csv
-    │   ├── End-2023-05-31-month-AdSenseReport.csv
-    │   ├── End-2023-05-31-week-AdSenseReport.csv
-    │   ├── latest-day.csv
-    │   ├── latest-month.csv
-    │   └── latest-week.csv
+    │   └── latest-day.csv
     └── hk
-        ├── End-2023-05-31-day-report.csv
-        ├── End-2023-05-31-month-report.csv
-        ├── End-2023-05-31-week-report.csv
-        ├── latest-day.csv
-        ├── latest-month.csv
-        └── latest-week.csv
+        └── latest-day.csv
 
-6 directories, 18 files
+6 directories, 3 files
 
 % file csv/admob/hk/latest-day.csv 
 csv/admob/hk/latest-day.csv: Unicode text, UTF-16, little-endian text
@@ -59,6 +43,32 @@ csv/adsense/hk/latest-day.csv: CSV text
 ```
 
 ---
+
+## Use Google AdSense/Admob api to get the report content and convert it into csv format
+
+```
+% google-csv-helper --google-token-file .google-account01 --google-show-report-list
+% google-csv-helper --google-token-file .google-account02 --google-show-report-list
+% google-csv-helper --google-token-file .google-account01 --google-adsense-latest-csv > csv/account1/adsense/latest-day.csv
+% google-csv-helper --google-token-file .google-account02 --google-admob-latest-csv > csv/account2/admob/latest-day.csv
+% google-csv-helper --google-token-file .google-account02 --google-adsense-latest-csv > csv/account2/adsense/latest-day.csv
+% tree csv 
+csv
+├── account01
+│   └── adsense
+│       └── latest-day.csv
+└── account02
+    ├── adsense
+    │   └── latest-day.csv
+    └── admob
+        └── latest-day.csv
+
+6 directories, 3 files
+```
+
+---
+
+## Create Dashboard reports from csv files
 
 ```
 % google-csv-helper --output markdown csv

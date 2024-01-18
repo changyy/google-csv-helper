@@ -129,6 +129,7 @@ class CSVHelper:
                         print(df)
                         print(f"add into self.handlePandasDataFrame: {item}")
                         print(f"getImportCSVDuplicateRule - {item}, rule: {self.getImportCSVDuplicateRule(item)}")
+                    #print(f"add into self.handlePandasDataFrame: {item}")
                     self.handlePandasDataFrame(key, item, df, self.getImportCSVDuplicateRule(item))
                 else:
                     if self.debugMode:
@@ -245,7 +246,7 @@ class CSVHelper:
                 isGAData = True
 
         if isGAData == False and isAdsenseData == False:
-            print(f"[WARNING] skip the data: {dataFrame.columns}")
+            print(f"[WARNING] skip the data({isGAData} / {isAdsenseData}): {dataFrame.columns}")
             return
             
         if self.debugMode:
@@ -272,9 +273,11 @@ class CSVHelper:
         oldDateEnd = keyFieldOldData[oldDataLength-1] if oldDataLength > 0 else None
 
         if oldDateEnd < currentDateBegin or oldDateBegin > currentDateEnd:
-            self.pandas_dataframe_output[key][keyField] = pandas.merge_ordered(self.pandas_dataframe_output[key][keyField], currentData)
+            try:
+                self.pandas_dataframe_output[key][keyField] = pandas.merge_ordered(self.pandas_dataframe_output[key][keyField], currentData)
+            except Exception as e:
+                self.pandas_dataframe_output[key][keyField] = pandas.concat([self.pandas_dataframe_output[key][keyField], currentData])
             return
-
         self.pandas_dataframe_output[key][keyField] = pandas.merge_ordered(self.pandas_dataframe_output[key][keyField], currentData)
         if keepRule != None:
             # https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.drop_duplicates.html

@@ -2,6 +2,8 @@
 import os
 import sys
 import pandas as pd
+import datetime
+import re
 from io import StringIO
 from google.auth.transport.requests import Request
 from google.auth.exceptions import RefreshError
@@ -11,7 +13,79 @@ from googleapiclient.discovery import build, Resource
 
 # https://github.com/googleads/googleads-adsense-examples/tree/main/v2/python
 
-def googleProjectSetupCheck(configFilePath: str, tokenFilePath: str, oauthScopes: [str] = ['https://www.googleapis.com/auth/adsense.readonly', 'https://www.googleapis.com/auth/admob.readonly']) -> (bool, Credentials, str):
+class DateRangeType(object):
+    def __init__(self):
+        pass
+    def __call__(self, value):
+        if not value:
+            raise KeyError('Cannot be empty')
+        value = value.upper()
+        output = { 'input': value, 'mode': 'PREDEFINED', 'startDate_year' : '', 'startDate_month': '', 'startDate_day': '', 'endDate_year': '', 'endDate_month': '', 'endDate_day': '' }
+        targetDate = datetime.datetime.now()
+
+        if value == 'TODAY':
+            output['startDate_year'] = targetDate.year
+            output['startDate_month'] = targetDate.month
+            output['startDate_day'] = targetDate.day
+            output['endDate_year'] = targetDate.year
+            output['endDate_month'] = targetDate.month
+            output['endDate_day'] = targetDate.day
+        elif value == 'YESTERDAY':
+            targetDate -= datetime.timedelta(days=1)
+            output['startDate_year'] = targetDate.year
+            output['startDate_month'] = targetDate.month
+            output['startDate_day'] = targetDate.day
+            output['endDate_year'] = targetDate.year
+            output['endDate_month'] = targetDate.month
+            output['endDate_day'] = targetDate.day
+        elif value == 'MONTH_TO_DATE':
+            output['startDate_year'] = targetDate.year
+            output['startDate_month'] = targetDate.month
+            output['startDate_day'] = 1
+            output['endDate_year'] = targetDate.year
+            output['endDate_month'] = targetDate.month
+            output['endDate_day'] = targetDate.day
+        elif value == 'YEAR_TO_DATE':
+            output['startDate_year'] = targetDate.year
+            output['startDate_month'] = 1
+            output['startDate_day'] = 1
+            output['endDate_year'] = targetDate.year
+            output['endDate_month'] = targetDate.month
+            output['endDate_day'] = targetDate.day
+        elif value == 'LAST_7_DAYS':
+            targetDate -= datetime.timedelta(days=1)
+            output['endDate_year'] = targetDate.year
+            output['endDate_month'] = targetDate.month
+            output['endDate_day'] = targetDate.day
+            targetDate -= datetime.timedelta(days=6)
+            output['startDate_year'] = targetDate.year
+            output['startDate_month'] = targetDate.month
+            output['startDate_day'] = targetDate.day
+        elif value == 'LAST_30_DAYS':
+            targetDate -= datetime.timedelta(days=1)
+            output['endDate_year'] = targetDate.year
+            output['endDate_month'] = targetDate.month
+            output['endDate_day'] = targetDate.day
+            targetDate -= datetime.timedelta(days=29)
+            output['startDate_year'] = targetDate.year
+            output['startDate_month'] = targetDate.month
+            output['startDate_day'] = targetDate.day
+        else:
+            output['mode'] = 'CUSTOM'
+            pattern = re.compile(r'(\d{4})(\d{2})(\d{2})-(\d{4})(\d{2})(\d{2})')
+            matches = pattern.match(value)
+            if not matches:
+                raise KeyError('Please use "YYYYmmdd-YYYYmmdd" format')
+            startYear, startMonth, startDay, endYear, endMonth, endDay = matches.groups()
+            output['startDate_year'] = int(startYear)
+            output['startDate_month'] = int(startMonth)
+            output['startDate_day'] = int(startDay)
+            output['endDate_year'] = int(endYear)
+            output['endDate_month'] = int(endMonth)
+            output['endDate_day'] = int(endDay)
+        return output
+
+def googleProjectSetupCheck(configFilePath: str, tokenFilePath: str, oauthScopes: [str] = ['https://www.googleapis.com/auth/adsense.readonly', 'https://www.googleapis.com/auth/admob.readonly', 'https://www.googleapis.com/auth/admob.report']) -> (bool, Credentials, str):
     outputStatus = False
     outputCredentials = None
     outputMessasge = []
@@ -47,17 +121,22 @@ def googleProjectSetupCheck(configFilePath: str, tokenFilePath: str, oauthScopes
 def getGoogleAdsenseService(credentials) -> Resource:
     return build('adsense', 'v2', credentials=credentials)
 
-def getGoogleAdsenseAccountsInfo(service: Resource):
+def getGoogleAdmobService(credentials) -> Resource:
+    return build('admob', 'v1', credentials=credentials)
+
+def getGoogleAccountsInfo(service: Resource):
     queryResult = service.accounts().list().execute()
-    if 'accounts' not in queryResult:
-        return []
-    return queryResult['accounts']
+    if 'account' in queryResult:
+        return queryResult['account']
+    if 'accounts' in queryResult:
+        return queryResult['accounts']
+    return []
 
 def getGoogleAdsenseSavedReportList(service: Resource, googleAccountPubId: str = None, maxPageSize: int = 50) -> (bool, [], str):
     outputStatus = False
     outputReport = []
     outputMessage = []
-    for accountInfo in getGoogleAdsenseAccountsInfo(service):
+    for accountInfo in getGoogleAccountsInfo(service):
         if 'name' not in accountInfo:
             continue
         if googleAccountPubId is not None:
@@ -86,14 +165,18 @@ def getGoogleAdsenseSavedReportList(service: Resource, googleAccountPubId: str =
 #
 # https://developers.google.com/adsense/management/reference/rest/v2/accounts.reports/generate
 #
-def getGoogleAdsenseReport(service: Resource, googleAccountPubId: str = None, query: dict = { 'reportId': None, 'dateRange': None, 'metrics': [], 'dimensions': [], 'orderBy': [], 'currencyCode': 'USD', 'reportingTimeZone': 'ACCOUNT_TIME_ZONE' }) -> (bool, [], []):
+def getGoogleAdsenseReport(service: Resource, googleAccountPubId: str = None, query: dict = { 'reportId': None, 'dateRange': None, 'metrics': [], 'dimensions': [], 'orderBy': [], 'currencyCode': 'USD', }) -> (bool, [], []):
     outputStatus = False
     outputReport = []
     outputMessage = []
 
+    if 'reportingTimeZone' not in query or not query['reportingTimeZone']:
+        query['reportingTimeZone'] = 'ACCOUNT_TIME_ZONE'
+
     for field in ['currencyCode', 'reportingTimeZone']:
         if  field not in query or not query[field]:
             outputMessage.append(f'[ERROR] "{field}" not found')
+
     if len(outputMessage) > 0:
         return (outputStatus, outputReport, outputMessage)
 
@@ -115,7 +198,7 @@ def getGoogleAdsenseReport(service: Resource, googleAccountPubId: str = None, qu
         # TypeError: Parameter "dateRange" value "hello" is not an allowed value in "['REPORTING_DATE_RANGE_UNSPECIFIED', 'CUSTOM', 'TODAY', 'YESTERDAY', 'MONTH_TO_DATE', 'YEAR_TO_DATE', 'LAST_7_DAYS', 'LAST_30_DAYS']"
         pass
 
-    for accountInfo in getGoogleAdsenseAccountsInfo(service):
+    for accountInfo in getGoogleAccountsInfo(service):
         if 'name' not in accountInfo:
             continue
         if googleAccountPubId is not None:
@@ -140,8 +223,9 @@ def getGoogleAdsenseReport(service: Resource, googleAccountPubId: str = None, qu
             else:
                 if 'orderBy' not in query or not query['orderBy']:
                     query['orderBy'] = ['+DATE']
+                # https://developers.google.com/adsense/management/reference/rest/v2/Metric
                 if 'metrics' not in query or not query['metrics']:
-                    query['metrics'] = ['COST_PER_CLICK', 'AD_REQUESTS_CTR', 'CLICKS', 'AD_REQUESTS', 'PAGE_VIEWS'] 
+                    query['metrics'] = ['ESTIMATED_EARNINGS', 'PAGE_VIEWS', 'PAGE_VIEWS_RPM', 'IMPRESSIONS', 'IMPRESSIONS_RPM', 'ACTIVE_VIEW_MEASURABILITY', 'CLICKS', 'IMPRESSIONS_CTR', 'COST_PER_CLICK'] #'CLICKS', 'COST_PER_CLICK', 'AD_REQUESTS_CTR', 'AD_REQUESTS', 'PAGE_VIEWS'] 
                 if 'dimensions' not in query or not query['dimensions']:
                     query['dimensions'] = ['DATE']
                 if query['dateRange'] != 'CUSTOM':
@@ -180,6 +264,106 @@ def getGoogleAdsenseReport(service: Resource, googleAccountPubId: str = None, qu
                         for cell in row['cells']:
                             item.append(cell['value'])
                         outputReport.append(item)
+            except Exception as e:
+                outputMessage.append(f'[ERROR] {e}')
+    return (outputStatus, outputReport, "\n".join(outputMessage))
+#
+# https://developers.google.com/admob/api/reference/rest/v1/accounts.networkReport/generate?hl=zh-tw
+# https://github.com/googleads/googleads-admob-api-samples/blob/main/python/v1/generate_network_report.py
+# https://github.com/changyy/helper-study/blob/master/python3/admob-api/main.py
+#
+def getGoogleAdmobReport(service: Resource, googleAccountPubId: str = None, query: dict = { 'dateRange': None, 'metrics': [], 'dimensions': [], 'orderBy': [], 'currencyCode': 'USD', }) -> (bool, [], []):
+    outputStatus = False
+    outputReport = []
+    outputMessage = []
+
+    for field in ['currencyCode']: #, 'reportingTimeZone']:
+        if  field not in query or not query[field]:
+            outputMessage.append(f'[ERROR] "{field}" not found')
+    if len(outputMessage) > 0:
+        return (outputStatus, outputReport, outputMessage)
+
+    # https://github.com/googleapis/google-api-python-client/blob/main/googleapiclient/discovery.py
+    if 'dateRange' not in query or not query['dateRange']:
+        outputMessage.append(f'[ERROR] "dateRange" not found')
+        return (outputStatus, outputReport, outputMessage)
+
+    #if query['dateRange'] != 'CUSTOM':
+        # https://github.com/googleapis/google-api-python-client/blob/main/googleapiclient/discovery.py
+        # TypeError: Parameter "dateRange" value "hello" is not an allowed value in "['REPORTING_DATE_RANGE_UNSPECIFIED', 'CUSTOM', 'TODAY', 'YESTERDAY', 'MONTH_TO_DATE', 'YEAR_TO_DATE', 'LAST_7_DAYS', 'LAST_30_DAYS']"
+
+    checkPass = True
+    for field in ['startDate_year', 'startDate_month', 'startDate_day', 'endDate_year', 'endDate_month', 'endDate_day']:
+        if field not in query:
+            checkPass = False
+            outputMessage.append(f'[ERROR] "{field}" not found')
+    if not checkPass:
+        return (outputStatus, outputReport, outputMessage)
+
+    for accountInfo in getGoogleAccountsInfo(service):
+        if 'name' not in accountInfo:
+            continue
+        if googleAccountPubId is not None:
+            if accountInfo['name'].find(googleAccountPubId) == -1:
+                continue
+
+        result = None
+        try:
+            if 'orderBy' not in query or not query['orderBy']:
+                query['orderBy'] = ['+DATE']
+            # https://developers.google.com/admob/api/reference/rest/v1/accounts.networkReport/generate?hl=zh-tw#Metric
+            if 'metrics' not in query or not query['metrics']:
+                query['metrics'] = ['ESTIMATED_EARNINGS', 'CLICKS', 'AD_REQUESTS', 'IMPRESSIONS', 'IMPRESSION_CTR', 'IMPRESSION_RPM', 'SHOW_RATE'] 
+            if 'dimensions' not in query or not query['dimensions']:
+                query['dimensions'] = ['DATE']
+
+            reportSpec = {
+                'date_range': {
+                    'start_date': { 'year': query['startDate_year'], 'month': query['startDate_month'], 'day': query['startDate_day']},
+                    'end_date': {'year': query['endDate_year'], 'month': query['endDate_month'], 'day': query['endDate_day']},
+                },
+                'dimensions': query['dimensions'],
+                'metrics': query['metrics'],
+                'sort_conditions': {'dimension': query['orderBy'][0].replace('+', '').replace('-', ''), 'order': 'DESCENDING' if query['orderBy'][0].find('+') != -1 else 'ASCENDING' },
+                'localizationSettings': {
+                    'currencyCode': query['currencyCode'],
+                    'languageCode': query['languageCode'] if 'languageCode' in query else 'en-US',
+                },
+                #'timeZone': query['reportingTimeZone'],
+            }
+            result = service.accounts().networkReport().generate(parent = accountInfo['name'], body={'report_spec': reportSpec}).execute()
+        except Exception as e:
+            outputMessage.append(f'[ERROR] {e}')
+        if result != None:
+            outputStatus = True
+            try:
+                # https://developers.google.com/admob/api/reference/rest/v1/accounts.networkReport/generate?hl=zh-tw
+                header = []
+                for field in query['dimensions']:
+                    header.append(field)
+                for field in query['metrics']:
+                    header.append(field)
+                outputReport.append(header)
+                for row in result[1:]:
+                    item = [] # [''] * (len(query['dimensions']) + len(query['metrics']))
+                    if 'row' not in row:
+                        continue
+                    if 'dimensionValues' in row['row']:
+                        for field in query['dimensions']:
+                            value = row['row']['dimensionValues'][field]['value']
+                            if field == 'DATE':
+                                value = value[0:4]+'-'+value[4:6]+'-'+value[6:]
+                            item.append( value )
+                    if 'metricValues' in row['row']:
+                        for field in query['metrics']:
+                            value = row['row']['metricValues'][field]
+                            if 'integerValue' in value:
+                                item.append(value['integerValue'])
+                            if 'doubleValue' in value:
+                                item.append(value['doubleValue'])
+                            if 'microsValue' in value:
+                                item.append( int(value['microsValue']) / 1000000.0)
+                    outputReport.append(item)
             except Exception as e:
                 outputMessage.append(f'[ERROR] {e}')
     return (outputStatus, outputReport, "\n".join(outputMessage))

@@ -1,6 +1,17 @@
 # -*- encoding: utf-8 -*-
 
 CSV_FIELD_NAME_TRANSFORM = {
+    # Admob API Export CSV
+    #"DATE": "Date",
+    #"ESTIMATED_EARNINGS": "Estimated earnings (USD)",    
+    #"CLICKS" : "Clicks",
+    "AD_REQUESTS": "Ad Requests",
+    #"IMPRESSIONS": "Impressions",
+    "IMPRESSION_CTR": "CTR",
+    "IMPRESSION_RPM": "Impression RPM (USD)",
+    "SHOW_RATE": "Show Rate",
+    #"COST_PER_CLICK": "CPC (USD)",
+
     # Adsense API Export CSV
     "DATE": "Date",
     "ESTIMATED_EARNINGS": "Estimated earnings (USD)",
@@ -97,6 +108,7 @@ CSV_FIELD_NAME_DATA_TYPE = {
     #"Week": str,
     "Estimated earnings (USD)": 1.0,
     "Page views": 1,
+    "Ad Requests": 1,
     "Page RPM (USD)": 1.0,
     "Impressions": 1,
     "Impression RPM (USD)": 1.0,

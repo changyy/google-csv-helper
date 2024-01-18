@@ -33,15 +33,18 @@ def main():
     parser.add_argument("--admob-filename-keyword", type=str, default="admob", help="the keyword on csv filename of admob")
     parser.add_argument("--ga-filename-keyword", type=str, default="ga", help="the keyword on csv filename of gogle anayltics")
     parser.add_argument("--google-project-setup-config", type=str, default=".google_client_secret.apps.googleusercontent.com.json", help="google project info")
-    parser.add_argument("--google-adsense-token-file", type=str, default=".google_adsense_account_token", help="setup the token file for google adsense login")
-    parser.add_argument("--google-adsense-show-report-list", action="store_true", default=False, help="Show Google Adsense/Admob Saved Report")
-    parser.add_argument("--google-adsense-get-latest-csv", type=str, default=None, help="Specific Saved Report Name to export csv file")
+    parser.add_argument("--google-token-file", type=str, default=".google_account_token", help="setup the token file for google adsense/admob login")
+    parser.add_argument("--google-show-report-list", action="store_true", default=False, help="Show Google Adsense Saved Report")
+    parser.add_argument("--google-query-data-range", type=DateRangeType(), default='MONTH_TO_DATE', help="Specific date range for AdSense/Admob report: MONTH_TO_DATE, TODAY, YESTERDAY, MONTH_TO_DATE, YEAR_TO_DATE, LAST_7_DAYS, LAST_30_DAYS, YYYYmmdd-YYYYmmdd")
+    parser.add_argument("--google-adsense-saved-report-name", type=str, default=None, help="Specific AdSense Saved Report Name to export csv content")
+    parser.add_argument("--google-adsense-latest-csv", action="store_true", default=False, help="Get AdSense latest daily report csv content")
+    parser.add_argument("--google-admob-latest-csv", action="store_true", default=False, help="Get AdMob latest daily Report to csv content")
 
     csv_filename_pattern = []
     args = parser.parse_args()
 
-    if args.google_adsense_show_report_list:
-        checkOauth, credentials, messages = googleProjectSetupCheck(args.google_project_setup_config, args.google_adsense_token_file)
+    if args.google_show_report_list:
+        checkOauth, credentials, messages = googleProjectSetupCheck(args.google_project_setup_config, args.google_token_file)
         if checkOauth == False:
             print(f'[ERROR] googleProjectSetupCheck: {messages}')
             sys.exit(1)
@@ -52,8 +55,8 @@ def main():
         print(json.dumps(queryResult, indent = 4))
         sys.exit(0)
 
-    if args.google_adsense_get_latest_csv:
-        checkOauth, credentials, messages = googleProjectSetupCheck(args.google_project_setup_config, args.google_adsense_token_file)
+    if args.google_adsense_saved_report_name:
+        checkOauth, credentials, messages = googleProjectSetupCheck(args.google_project_setup_config, args.google_token_file)
         if checkOauth == False:
             print(f'[ERROR] googleProjectSetupCheck: {messages}')
             sys.exit(1)
@@ -67,21 +70,81 @@ def main():
         for item in savedReportList:
             if foundSaveReportItem:
                 break
-            if item['name'] == args.google_adsense_get_latest_csv:
+            if item['name'] == args.google_adsense_saved_report_name:
                 foundSaveReportItem = item
-            elif item['title'].find(args.google_adsense_get_latest_csv) != -1:
+            elif item['title'].find(args.google_adsense_saved_report_name) != -1:
                 foundSaveReportItem = item
  
         if foundSaveReportItem == None:
-            print(f'[ERROR] getGoogleAdsenseSavedReportList not found: {args.google_adsense_get_latest_csv}')
+            print(f'[ERROR] getGoogleAdsenseSavedReportList not found: {args.google_adsense_saved_report_name}')
             sys.exit(1)
-
-        queryStatus, queryResult, queryMessage = getGoogleAdsenseReport(getGoogleAdsenseService(credentials), query = {
+        queryOption = {
             'reportId': foundSaveReportItem['name'],
             'dateRange': 'MONTH_TO_DATE',
             'currencyCode' : 'USD', 
-            'reportingTimeZone': 'ACCOUNT_TIME_ZONE',
-        })
+        }
+        if args.google_query_data_range['mode'] == 'PREDEFINED':
+            queryOption['dateRange'] = args.google_query_data_range['input']
+        else:
+            queryOption['dateRange'] = 'CUSTOM'
+            for field in ['startDate_year', 'startDate_month', 'startDate_day', 'endDate_year', 'endDate_month', 'endDate_day']:
+                queryOption[field] = args.google_query_data_range[field]
+        queryStatus, queryResult, queryMessage = getGoogleAdsenseReport(getGoogleAdsenseService(credentials), query = queryOption)
+        if not queryStatus:
+            print(f'[ERROR] getGoogleAdsenseReport: {queryMessage}')
+            sys.exit(1)
+        queryStatus, queryResult, queryMessage = listToCSVFormat(queryResult)
+        if not queryStatus:
+            print(f'[ERROR] listToCSVFormat: {queryMessage}')
+            sys.exit(1)
+        print(queryResult)
+        sys.exit(0)
+    elif args.google_adsense_latest_csv:
+        checkOauth, credentials, messages = googleProjectSetupCheck(args.google_project_setup_config, args.google_token_file)
+        if checkOauth == False:
+            print(f'[ERROR] googleProjectSetupCheck: {messages}')
+            sys.exit(1)
+ 
+        queryOption = {
+            'dateRange': 'MONTH_TO_DATE',
+            'currencyCode' : 'USD', 
+        }
+        if args.google_query_data_range['mode'] == 'PREDEFINED':
+            queryOption['dateRange'] = args.google_query_data_range['input']
+        else:
+            queryOption['dateRange'] = 'CUSTOM'
+            for field in ['startDate_year', 'startDate_month', 'startDate_day', 'endDate_year', 'endDate_month', 'endDate_day']:
+                queryOption[field] = args.google_query_data_range[field]
+
+        queryStatus, queryResult, queryMessage = getGoogleAdsenseReport(getGoogleAdsenseService(credentials), query = queryOption)
+        if not queryStatus:
+            print(f'[ERROR] getGoogleAdsenseReport: {queryMessage}')
+            sys.exit(1)
+        queryStatus, queryResult, queryMessage = listToCSVFormat(queryResult)
+        if not queryStatus:
+            print(f'[ERROR] listToCSVFormat: {queryMessage}')
+            sys.exit(1)
+        print(queryResult)
+        sys.exit(0)
+    elif args.google_admob_latest_csv:
+        checkOauth, credentials, messages = googleProjectSetupCheck(args.google_project_setup_config, args.google_token_file)
+        if checkOauth == False:
+            print(f'[ERROR] googleProjectSetupCheck: {messages}')
+            sys.exit(1)
+ 
+        queryOption = {
+            'dateRange': 'MONTH_TO_DATE',
+            'currencyCode' : 'USD', 
+        }
+        #if args.google_query_data_range['mode'] == 'PREDEFINED':
+        #    queryOption['dateRange'] = args.google_query_data_range['input']
+        #else:
+        if True:
+            queryOption['dateRange'] = 'CUSTOM'
+            for field in ['startDate_year', 'startDate_month', 'startDate_day', 'endDate_year', 'endDate_month', 'endDate_day']:
+                queryOption[field] = args.google_query_data_range[field]
+
+        queryStatus, queryResult, queryMessage = getGoogleAdmobReport(getGoogleAdmobService(credentials), query = queryOption)
         if not queryStatus:
             print(f'[ERROR] getGoogleAdsenseReport: {queryMessage}')
             sys.exit(1)

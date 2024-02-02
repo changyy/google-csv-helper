@@ -270,15 +270,23 @@ class CSVHelper:
         keyFieldOldData = self.pandas_dataframe_output[key][keyField][keyField]
         oldDataLength = len(keyFieldOldData)
         oldDateBegin = keyFieldOldData[0] if oldDataLength > 0 else None
+        #print(f"-filename: {filename}-")
+        #print(f"oldDataLength:{oldDataLength}, shape: {keyFieldOldData.shape}")
+        #keyFieldOldData.to_csv('/tmp/test.csv')
+        #print(keyFieldOldData)
+        #print("=====")
         oldDateEnd = keyFieldOldData[oldDataLength-1] if oldDataLength > 0 else None
 
+        try:
+            self.pandas_dataframe_output[key][keyField] = pandas.merge_ordered(self.pandas_dataframe_output[key][keyField], currentData)
+        except Exception as e:
+            self.pandas_dataframe_output[key][keyField] = pandas.concat([self.pandas_dataframe_output[key][keyField], currentData])
+        self.pandas_dataframe_output[key][keyField] = self.pandas_dataframe_output[key][keyField].sort_values(by=keyField)
+        self.pandas_dataframe_output[key][keyField] = self.pandas_dataframe_output[key][keyField].reset_index(drop=True)
+
         if oldDateEnd < currentDateBegin or oldDateBegin > currentDateEnd:
-            try:
-                self.pandas_dataframe_output[key][keyField] = pandas.merge_ordered(self.pandas_dataframe_output[key][keyField], currentData)
-            except Exception as e:
-                self.pandas_dataframe_output[key][keyField] = pandas.concat([self.pandas_dataframe_output[key][keyField], currentData])
             return
-        self.pandas_dataframe_output[key][keyField] = pandas.merge_ordered(self.pandas_dataframe_output[key][keyField], currentData)
+
         if keepRule != None:
             # https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.drop_duplicates.html
             self.pandas_dataframe_output[key][keyField].drop_duplicates(subset=keyField, keep=keepRule)

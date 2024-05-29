@@ -25,6 +25,9 @@ def main():
     parser.add_argument("csv_dir", nargs="*", type=str, help="the directory where the csv file is located")
     parser.add_argument("--output", choices=['json', 'markdown'], default='markdown', help="results format")
     parser.add_argument("--output-type", choices=['adsense', 'ga3', 'ga4'], default="adsense", help="the report")
+    parser.add_argument("--output-chart", type=str, default="", help="draw cumulative average charts for specific columns identified by field names (multiple fields separated by commas)")
+    parser.add_argument("--output-chart-field-candidate", action="store_true", default=False, help="show field name for drawing cumulative average charts")
+    parser.add_argument("--output-chart-config", type=str, default="{}", help="cumulative average chart configuration")
     parser.add_argument("--report", choices=['date', 'week', 'month'], default='date', help="the report type")
     parser.add_argument("--debug", action="store_true", default=False, help="output the debug messages")
     parser.add_argument("--version", action="store_true", default=False, help="show the version")
@@ -185,13 +188,35 @@ def main():
     #obj.setImportCSVDuplicateRules('default', 'last')
     obj.readAllCSVRawFile()
 
+    output_chart = {
+        'config' : { 
+            'height': 10,
+        }, 'columns': {
+        }, 'debug': {
+            'showChartColumnName': args.output_chart_field_candidate,
+        }
+    }
+    if args.output_chart != '':
+        for fieldName in args.output_chart.split(','):
+            fieldName = fieldName.strip()
+            if len(fieldName) == 0:
+                continue
+            output_chart['columns'][fieldName] = fieldName
+    if args.output_chart_config != '' and args.output_chart_config != '{}':
+       try:
+           test_json_value = json.loads(args.output_chart_config)
+           output_chart['config'] = test_json_value
+       except Exception as e:
+           if args.debug:
+               print(e)
+
     if args.output == 'markdown':
         if args.report == 'date':
             if args.output_type == 'adsense':
                 print("## Current:")
-                print(obj.getDailyMarkDownReport(args.enddate, csv_filename_pattern))
+                print(obj.getDailyMarkDownReport(args.enddate, csv_filename_pattern, output_chart))
                 print("## Previuos:")
-                print(obj.getDailyMarkDownReport(args.enddate.replace(day=1), csv_filename_pattern))
+                print(obj.getDailyMarkDownReport(args.enddate.replace(day=1), csv_filename_pattern, output_chart))
             else:
                 print("## Current:")
                 print(obj.getDailyMarkDownReport(args.enddate, csv_filename_pattern))

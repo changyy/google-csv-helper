@@ -5,10 +5,11 @@ from google_csv_helper import csv_helper
 
 import pandas
 import datetime
+import asciichartpy
 
 class AdsenseCSVHelper(csv_helper.CSVHelper):
     def getDateRangeReport(self, dataframe: pandas.DataFrame, keyFieldName:str, valueFilterBegin:str, valueFilterEnd:str, minmaxDateInputFormat:str, minmaxDateOutputFormat:str ):
-        output = {}
+        output = { 'raw': None }
         if len(dataframe.index) == 0:
             if self.debugMode:
                 print(f"[WARNING] dataframe is empty.")
@@ -36,6 +37,8 @@ class AdsenseCSVHelper(csv_helper.CSVHelper):
         output['Lowest earnings info'] = minRowDateInfo
         output['Highest earnings'] = maxRow['Estimated earnings (USD)'].sum()
         output['Highest earnings info'] = maxRowDateInfo
+
+        output['raw'] = pickedData
         
         return output
 
@@ -66,6 +69,8 @@ class AdsenseCSVHelper(csv_helper.CSVHelper):
                         "Average Daily Revenue": 0.0,
                     },
                 },
+                "raw": {
+                }
             },
         }
 
@@ -113,6 +118,7 @@ class AdsenseCSVHelper(csv_helper.CSVHelper):
 
             prevItemInfo = self.getDateRangeReport(v["Date"], 'Date', prevDateFilterBegin, prevDateFilterEnd, '%Y-%m-%d', '%m/%d %a')
             item = self.getDateRangeReport(v["Date"], 'Date', DateFilterBegin, DateFilterEnd, '%Y-%m-%d', '%m/%d %a')
+            output["output"]["raw"][target] = [ item["raw"], prevItemInfo["raw"] ]
     
             compareInfo = {}
             for lookup in csv_common.CSV_OUTPUT_REPORT_COMPARISON_INFO:
@@ -142,7 +148,7 @@ class AdsenseCSVHelper(csv_helper.CSVHelper):
 
         return output
 
-    def getDailyMarkDownReport(self, pickedDate: datetime.date, pickedReportKeyword: list[str]) -> str:
+    def getDailyMarkDownReport(self, pickedDate: datetime.date, pickedReportKeyword: list[str], charts: dict = {}) -> str:
         data = self.getDailySummaryReport(pickedDate, pickedReportKeyword)
 
         output = [ 
@@ -157,5 +163,38 @@ class AdsenseCSVHelper(csv_helper.CSVHelper):
 
         output.append( f"| Total | {data['output']['csv']['total']['Cumulative Revenue']:,.2f} | {data['output']['csv']['total']['Average Daily Revenue']:,.2f} | | | ")
 
-        return "\n".join(output)
+        #charts = {
+        #    'config': {'height': 10},
+        #    'columns': {
+        #        'Estimated earnings (USD)': 'Estimated earnings (USD)',
+        #        'CPC (USD)': 'CPC (USD)',
+        #    }, 'debug': {
+        #        'showColumns': False
+        #    }
+        #}
+        if 'config' in charts and 'columns' in charts and len(charts['columns']) > 0:
+            output.append("#### ref")
+            chartsConfig = charts['config']
+            chartsOutput = charts['columns']
+            for selectedColumn, outputColumn in chartsOutput.items():
+                for k, v in data['output']['raw'].items():
+                    if len(v) == 0 or not isinstance(v[0], pandas.DataFrame):
+                        continue
+                    selectedDataFrame = v[0]
+                    if 'debug' in charts and 'showChartColumnName' in charts['debug'] and charts['debug']['showChartColumnName']:
+                        print(f"[INFO] {k} field name for drawing chart: {selectedDataFrame.columns.to_list()}")
+                    for selectedColumn in chartsOutput.keys():
+                        if selectedColumn not in selectedDataFrame.columns:
+                            continue
+                        #targetValues = list(selectedDataFrame[selectedColumn])
+                        #avgValues = []
+                        #for i in range(len(targetValues)):
+                        #    avgValues.append(sum(targetValues[0:i+1])/(i+1) if i > 0 else targetValues[i])
+                        avgValues = selectedDataFrame[selectedColumn].expanding().mean().tolist()
 
+                        output.append(f"##### {k} - Cumulative Average of '{selectedColumn}' Chart:")
+                        output.append("```")
+                        output.append(asciichartpy.plot(avgValues, cfg=chartsConfig))
+                        output.append("```")
+
+        return "\n".join(output)

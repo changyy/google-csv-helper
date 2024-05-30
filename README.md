@@ -83,8 +83,10 @@ csv
 | Total | 1,234.56 | 456.78 | | | 
 ```
 
+---
+
 ```
-% google-csv-helper --output markdown --output-chart 'Estimated earnings (USD)' csv 
+% google-csv-helper --output markdown --output-chart-columns 'Estimated earnings (USD)' csv 
 ```
 
 ## Current:
@@ -97,7 +99,54 @@ csv
 | Adsense China |  1,234.56 | 123.45 (-12.34%) | 0.2345 (2.34%) | 123.45 [06/02 Fri] | 345.67 `[06/01 Thu] 
 | Total | 1,234.56 | 456.78 | | | 
 #### ref
-##### Admob Global - Cumulative Average of 'Estimated earnings (USD)' Chart:
+##### Sum of (Admob Global, Adsense Global, Adsense China) - Cumulative Average of 'Estimated earnings (USD)' Chart:
+```
+ 867.61  ┤
+ 846.52  ┤                          ╭──
+ 825.44  ┼╮                        ╭╯
+ 804.36  ┤│                      ╭─╯
+ 783.27  ┤│                     ╭╯
+ 762.19  ┤│                   ╭─╯
+ 741.11  ┤│ ╭╮ ╭╮            ╭╯
+ 720.02  ┤│╭╯╰─╯╰╮           │
+ 698.94  ┤╰╯     ╰─╮         │
+ 677.86  ┤         ╰╮       ╭╯
+ 656.77  ┤          ╰───╮   │
+ 635.69  ┤              ╰───╯
+```
+
+---
+
+```
+% google-csv-helper --output-chart-columns 'Estimated earnings (USD)' --output-chart-detailed-columns csv
+```
+
+## Current:
+### Date Range: 2023-06-01 ~ 2023-06-04
+#### compare: 2023-05-01 ~ 2023-05-31
+| Item | Cumulative Revenue | Average Daily Revenue | Average CPC | Min Daily Revenue | Max Daily Revenue 
+| -- | --: | --: | --: | --: | --: 
+| Admob Global | 1,234.56 | 123.45 (-12.34%) | 0.001 (-1.23%) | 234.56 [06/02 Fri] | 456.78 [06/01 Thu] 
+| Adsense Global | 1,234.56 | 123.45 (-12.34%) | 0.1234 (-2.34%) | 123.45 [06/02 Fri] | 345.67 [06/01 Thu] 
+| Adsense China |  1,234.56 | 123.45 (-12.34%) | 0.2345 (2.34%) | 123.45 [06/02 Fri] | 345.67 `[06/01 Thu] 
+| Total | 1,234.56 | 456.78 | | | 
+#### ref
+##### Sum of (Admob Global, Adsense Global, Adsense China) - Cumulative Average of 'Estimated earnings (USD)' Chart:
+```
+ 867.61  ┤
+ 846.52  ┤                          ╭──
+ 825.44  ┼╮                        ╭╯
+ 804.36  ┤│                      ╭─╯
+ 783.27  ┤│                     ╭╯
+ 762.19  ┤│                   ╭─╯
+ 741.11  ┤│ ╭╮ ╭╮            ╭╯
+ 720.02  ┤│╭╯╰─╯╰╮           │
+ 698.94  ┤╰╯     ╰─╮         │
+ 677.86  ┤         ╰╮       ╭╯
+ 656.77  ┤          ╰───╮   │
+ 635.69  ┤              ╰───╯
+```
+###### Admob Global - Cumulative Average of 'Estimated earnings (USD)' Chart:
 ```
   297.11  ┼╮
   294.28  ┤│     ╭╮
@@ -112,7 +161,7 @@ csv
   268.88  ┤ ╰──╯                  ╰──╯
   266.06  ┤
 ```
-##### Adsense Global - Cumulative Average of 'Estimated earnings (USD)' Chart:
+###### Adsense Global - Cumulative Average of 'Estimated earnings (USD)' Chart:
 ```
   495.71  ┤
   473.65  ┤                          ╭──
@@ -127,7 +176,7 @@ csv
   275.10  ┤        ╰─╮      ╭╯
   253.04  ┤          ╰──────╯
 ```
-##### Adsense China - Cumulative Average of 'Estimated earnings (USD)' Chart:
+###### Adsense China - Cumulative Average of 'Estimated earnings (USD)' Chart:
 ```
   211.76  ┤
   209.91  ┤     ╭──╮
@@ -142,3 +191,4 @@ csv
   193.25  ┤│ │
   191.40  ┤╰─╯
 ```
+

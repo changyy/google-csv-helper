@@ -169,20 +169,29 @@ class AdsenseCSVHelper(csv_helper.CSVHelper):
         #        'Estimated earnings (USD)': 'Estimated earnings (USD)',
         #        'CPC (USD)': 'CPC (USD)',
         #    }, 'debug': {
-        #        'showColumns': False
+        #        'showCumulativeAverageChartColumnCandidates': False,
+        #        'showEachCumulativeAverageColumnChart': False,
         #    }
         #}
-        if 'config' in charts and 'columns' in charts and len(charts['columns']) > 0:
+        if 'config' in charts and 'columns' in charts:
             output.append("#### ref")
             chartsConfig = charts['config']
             chartsOutput = charts['columns']
+
+            if 'showCumulativeAverageChartColumnCandidates' in charts['debug'] and charts['debug']['showCumulativeAverageChartColumnCandidates']:
+                for k, v in data['output']['raw'].items(): 
+                    if len(v) == 0 or not isinstance(v[0], pandas.DataFrame):
+                        continue
+                    selectedDataFrame = v[0]
+                    print(f"[INFO] {k} CumulativeAverageChart Column Candidates: {selectedDataFrame.columns.to_list()}")
+
             for selectedColumn, outputColumn in chartsOutput.items():
+                sumOfTargetColumn = {}
+                moreDetails = []
                 for k, v in data['output']['raw'].items():
                     if len(v) == 0 or not isinstance(v[0], pandas.DataFrame):
                         continue
                     selectedDataFrame = v[0]
-                    if 'debug' in charts and 'showChartColumnName' in charts['debug'] and charts['debug']['showChartColumnName']:
-                        print(f"[INFO] {k} field name for drawing chart: {selectedDataFrame.columns.to_list()}")
                     for selectedColumn in chartsOutput.keys():
                         if selectedColumn not in selectedDataFrame.columns:
                             continue
@@ -191,10 +200,37 @@ class AdsenseCSVHelper(csv_helper.CSVHelper):
                         #for i in range(len(targetValues)):
                         #    avgValues.append(sum(targetValues[0:i+1])/(i+1) if i > 0 else targetValues[i])
                         avgValues = selectedDataFrame[selectedColumn].expanding().mean().tolist()
+                        sumOfTargetColumn[k] = avgValues
 
-                        output.append(f"##### {k} - Cumulative Average of '{selectedColumn}' Chart:")
+                        if 'showEachCumulativeAverageColumnChart' in charts['debug'] and charts['debug']['showEachCumulativeAverageColumnChart']:
+                            moreDetails.append(f"###### {k} - Cumulative Average of '{selectedColumn}' Chart:")
+                            moreDetails.append("```")
+                            moreDetails.append(asciichartpy.plot(avgValues, cfg=chartsConfig))
+                            moreDetails.append("```")
+                if len(sumOfTargetColumn) > 0:
+                    passDataLengthCheck = True
+                    sumOfTargetColumnValue = []
+                    for avgValues in sumOfTargetColumn.values():
+                        if len(sumOfTargetColumnValue) == 0:
+                            sumOfTargetColumnValue = avgValues
+                        elif len(sumOfTargetColumnValue) != len(avgValues):
+                            passDataLengthCheck = False
+                            break
+                        else:
+                            sumOfTargetColumnValue = [sum(x) for x in zip(sumOfTargetColumnValue, avgValues)] 
+                    output.append(f"##### Sum of ({', '.join(list(sumOfTargetColumn.keys()))}) - Cumulative Average of '{selectedColumn}' Chart:")
+                    if len(sumOfTargetColumnValue) == 0:
+                        passDataLengthCheck = False
+                        output.append()
+                        output.append('No Data')
+                    elif not passDataLengthCheck:
+                        output.append('All targetColumn lists must have the same number of elements.')
+                    else:
                         output.append("```")
-                        output.append(asciichartpy.plot(avgValues, cfg=chartsConfig))
+                        output.append(asciichartpy.plot(sumOfTargetColumnValue, cfg=chartsConfig))
                         output.append("```")
+
+                    if len(moreDetails) > 0:
+                        output = output + moreDetails
 
         return "\n".join(output)

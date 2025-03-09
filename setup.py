@@ -41,8 +41,8 @@ except Exception as e:
 setup(
     name="google-csv-helper", 
     version=VERSION,
-    author="Yuan-Yi Chang",
-    author_email="<changyy.csie@gmail.com>",
+    author="changyy",
+    author_email="changyy.csie@gmail.com",
     description=DESCRIPTION,
     long_description=LONG_DESCRIPTION,
     long_description_content_type=LONG_DESCRIPTION_TYPE,

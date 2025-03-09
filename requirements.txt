@@ -1,5 +1,5 @@
-google-api-python-client==2.114.0
-google-auth-oauthlib==1.2.0
-numpy==1.26.3
-pandas==2.1.4
+google-api-python-client==2.163.0
+google-auth-oauthlib==1.2.1
+numpy==2.2.3
+pandas==2.2.3
 asciichartpy==1.5.25

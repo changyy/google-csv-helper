@@ -219,6 +219,9 @@ def main():
                 print(obj.getDailyMarkDownReport(args.enddate, csv_filename_pattern, setup_output_chart))
                 print("## Previuos:")
                 print(obj.getDailyMarkDownReport(args.enddate.replace(day=1), csv_filename_pattern, setup_output_chart))
+                yearly_output = obj.getYearlyMarkDownReport(args.enddate)
+                if yearly_output != "":
+                    print(yearly_output)
             else:
                 print("## Current:")
                 print(obj.getDailyMarkDownReport(args.enddate, csv_filename_pattern))

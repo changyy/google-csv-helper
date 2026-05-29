@@ -257,54 +257,41 @@ class CSVHelper:
             currentData = dataFrame[ [keyField] + csv_common.CSV_OUTPUT_ADSENSE_FIELDS ]
         if isGAData:
             currentData = dataFrame[ [keyField] + inputGADataFields ]
-        currentDataLength = len(currentData)
-        currentDateBegin = currentData[keyField][0] if currentDataLength > 0 else None
-        currentDateEnd = currentData[keyField][currentDataLength - 1] if currentDataLength > 0 else None
 
         # set output
         if keyField not in self.pandas_dataframe_output[key]:
             self.pandas_dataframe_output[key][keyField] = currentData
             return
 
-        # update data
-        keyFieldOldData = self.pandas_dataframe_output[key][keyField][keyField]
-        oldDataLength = len(keyFieldOldData)
-        oldDateBegin = keyFieldOldData[0] if oldDataLength > 0 else None
-        #print(f"-filename: {filename}-")
-        #print(f"oldDataLength:{oldDataLength}, shape: {keyFieldOldData.shape}")
-        #keyFieldOldData.to_csv('/tmp/test.csv')
-        #print(keyFieldOldData)
-        #print("=====")
-        oldDateEnd = keyFieldOldData[oldDataLength-1] if oldDataLength > 0 else None
-
+        # On duplicate dates, keep the row with the larger value. Latest-day
+        # reports are partial snapshots that grow as the day progresses, so the
+        # larger reading is the more complete one. ESTIMATED_EARNINGS (adsense)
+        # and the leading GA field both increase monotonically through the day.
+        valueField = csv_common.CSV_OUTPUT_ADSENSE_FIELDS[0] if isAdsenseData else inputGADataFields[0]
         try:
-            self.pandas_dataframe_output[key][keyField] = pandas.merge_ordered(self.pandas_dataframe_output[key][keyField], currentData)
+            self.pandas_dataframe_output[key][keyField] = self.handleDataFrameMerge(
+                self.pandas_dataframe_output[key][keyField], currentData, keyField, valueField
+            )
         except Exception as e:
-            self.pandas_dataframe_output[key][keyField] = pandas.concat([self.pandas_dataframe_output[key][keyField], currentData])
-        self.pandas_dataframe_output[key][keyField] = self.pandas_dataframe_output[key][keyField].sort_values(by=keyField)
-        self.pandas_dataframe_output[key][keyField] = self.pandas_dataframe_output[key][keyField].reset_index(drop=True)
-
-        if oldDateEnd < currentDateBegin or oldDateBegin > currentDateEnd:
-            return
-
-        if keepRule != None:
-            # https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.drop_duplicates.html
-            self.pandas_dataframe_output[key][keyField].drop_duplicates(subset=keyField, keep=keepRule)
-
-        #if oldDateEnd == currentDateBegin or oldDateBegin == currentDateEnd:
-        #    self.pandas_dataframe_output[key][keyField] = self.handleDataFrameMerge(self.pandas_dataframe_output[key][keyField], currentData, keyField, csv_common.CSV_OUTPUT_ADSENSE_FIELDS[0])
-        #    return
-        #self.pandas_dataframe_output[key][keyField] = self.handleDataFrameMerge(self.pandas_dataframe_output[key][keyField], currentData, keyField, csv_common.CSV_OUTPUT_ADSENSE_FIELDS[0])
-
-        #if oldDateBegin >= currentDateBegin or oldDateEnd <= currentDateEnd:
-        #    self.pandas_dataframe_output[key][keyField] = self.handleDataFrameMerge(self.pandas_dataframe_output[key][keyField], currentData, keyField, csv_common.CSV_OUTPUT_ADSENSE_FIELDS[0])
+            if self.debugMode:
+                print(f"handleDataFrameMerge failed, falling back to concat: {e}")
+            self.pandas_dataframe_output[key][keyField] = pandas.concat(
+                [self.pandas_dataframe_output[key][keyField], currentData]
+            )
+        self.pandas_dataframe_output[key][keyField] = (
+            self.pandas_dataframe_output[key][keyField]
+            .sort_values(by=keyField)
+            .reset_index(drop=True)
+        )
         return
 
     def handleDataFrameMerge(self, oldDataFrame: pandas.DataFrame, newDataFrame: pandas.DataFrame, keyField:str, valueField:str) -> pandas.DataFrame:
-        #print("in handleDataFrameMerge")
-        # https://pandas.pydata.org/docs/reference/api/pandas.concat.html?highlight=concat#pandas.concat
-        # https://pandas.pydata.org/docs/reference/api/pandas.merge_ordered.html
-        output = pandas.merge_ordered(oldDataFrame, newDataFrame)
+        # Use concat + sort instead of merge_ordered: merge_ordered raises on
+        # cross-source dtype mismatches (e.g. CTR stored as "5.34%" string in
+        # older TSVs vs float in newer CSVs). The while loop below handles
+        # deduplication on keyField regardless.
+        output = pandas.concat([oldDataFrame, newDataFrame], ignore_index=True)
+        output = output.sort_values(by=keyField).reset_index(drop=True)
         #print("##########")
         #print(output)
         #print("##------##")
